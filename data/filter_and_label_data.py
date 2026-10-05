@@ -2,7 +2,30 @@ import ftfy
 import pandas as pd
 
 # Sources to keep in the dataset. Other sources like 'Human Written' will be filtered out.
-KEEP_SOURCES = ["ChatGPT", "Claude", "Gemini", "Llama", "Qwen"]
+KEEP_SOURCES = ["ChatGPT", "Claude", "Mistral AI", "Copilot", "Qwen"]
+
+# Question ids where at least one kept source has an answer that belongs to a different question (shifted or duplicated answers in the raw dataset).
+# Found by comparing each answer to the other models' answers for every question in the same subject. Dropped for every source so all sources keep the same questions.
+MISMATCHED_QUESTION_IDS = {
+    202, 204, 205, 206, 207, 208, 281, 282, 283, 284, 286, 287, 288, 289, 290, 291,
+    292, 293, 294, 295, 296, 297, 298, 299, 367, 495, 680, 681, 728, 848, 864, 879,
+    901, 961, 962, 963, 964, 965, 966, 1003, 1005, 1021, 1022, 1023, 1024, 1027,
+    1060, 1263, 1289, 1291, 1409, 1422, 1495, 1498, 1499, 1557, 1574, 1576, 1704,
+    1705, 1708, 1789, 1879, 1886, 1887, 1888, 1896, 1947, 1948, 1949, 1976, 1977,
+    1978, 1979, 1980, 1982, 1984, 1985, 1986, 1987, 1989, 1990, 1991, 1992, 1993,
+    1994, 1995, 1996, 1997, 1998, 2183, 2185, 2186, 2189, 2191, 2192, 2193, 2194,
+    2195, 2196, 2198, 2249, 2250, 2303, 2346, 2347, 2358, 2372, 2499, 2699, 2718,
+    2748, 2750, 2807, 2811, 2855, 2856, 2857, 2880, 2881, 2882, 2883, 2884, 2885,
+    2886, 2887, 2888, 2889, 2890, 2891, 2893, 2894, 2895, 2896, 2897, 2898, 2899,
+    2987,
+}
+
+# Question ids where at least one kept source has a cut-off answer (ends mid-sentence). Dropped for every source like the mismatched questions.
+CUT_OFF_QUESTION_IDS = {650, 713, 715, 1052, 1759}
+
+# In the raw dataset, Claude's last Gender Studies question ("How can men and women collaborate for gender justice?") is placed at the end of the Agriculture block (position 2899 instead of 2799), shifting Claude's rows 2799-2898 back by one.
+CLAUDE_MISPLACED_POSITION = 2899
+CLAUDE_CORRECT_POSITION = 2799
 
 # Subject size used to determine the subject of a question as all entries for a source have the same order of topics with each topic having 100 entries 
 SUBJECT_SIZE = 100
@@ -74,6 +97,15 @@ def fix_garbled_text(df: pd.DataFrame) -> pd.DataFrame:
         )
     return df
 
+# Move Claude's misplaced Gender Studies row back to its correct position so Claude's rows line up with the other sources.
+def fix_claude_row_order(df: pd.DataFrame) -> pd.DataFrame:
+    claude_rows = df[df["Source"] == "Claude"]
+    order = list(range(len(claude_rows)))
+    misplaced = order.pop(CLAUDE_MISPLACED_POSITION)
+    order.insert(CLAUDE_CORRECT_POSITION, misplaced)
+    other_rows = df[df["Source"] != "Claude"]
+    return pd.concat([other_rows, claude_rows.iloc[order]])
+
 # Number questions from each source so that the same question from a different source has the same question_id. This is used to map the same question from different sources to the same subject and domain.
 def number_questions_within_each_model(df: pd.DataFrame) -> pd.DataFrame:
     numbered_models = []
@@ -82,6 +114,22 @@ def number_questions_within_each_model(df: pd.DataFrame) -> pd.DataFrame:
         model_rows["question_id"] = range(len(model_rows))
         numbered_models.append(model_rows)
     return pd.concat(numbered_models, ignore_index=True)
+
+# Drop questions with mismatched answers from every source and print how many rows were removed.
+def drop_mismatched_questions(df: pd.DataFrame) -> pd.DataFrame:
+    is_mismatched = df["question_id"].isin(MISMATCHED_QUESTION_IDS)
+    kept = df[~is_mismatched].copy()
+    print(f"[drop_mismatched_questions] rows before: {len(df)}, dropped: {is_mismatched.sum()}, rows after: {len(kept)}")
+    print(f"[drop_mismatched_questions] rows per source after drop: {kept['Source'].value_counts().to_dict()}")
+    return kept
+
+# Drop questions with cut-off answers from every source and print how many rows were removed.
+def drop_cut_off_questions(df: pd.DataFrame) -> pd.DataFrame:
+    is_cut_off = df["question_id"].isin(CUT_OFF_QUESTION_IDS)
+    kept = df[~is_cut_off].copy()
+    print(f"[drop_cut_off_questions] rows before: {len(df)}, dropped: {is_cut_off.sum()}, rows after: {len(kept)}")
+    print(f"[drop_cut_off_questions] rows per source after drop: {kept['Source'].value_counts().to_dict()}")
+    return kept
 
 # This unifies the prompts from different sources as the original dataset sometimes has small differences between the prompts asked to different llm models.
 def use_one_wording_per_question(df: pd.DataFrame) -> pd.DataFrame:
@@ -98,9 +146,15 @@ def main(in_path: str, out_path: str) -> None:
 
     df = fix_garbled_text(df)
 
+    df = fix_claude_row_order(df)
+
     df = number_questions_within_each_model(df)
 
     df = use_one_wording_per_question(df)
+
+    df = drop_mismatched_questions(df)
+
+    df = drop_cut_off_questions(df)
 
     df["subject"] = df["question_id"].map(subject_of_question)
     df["domain"] = df["subject"].map(SUBJECT_DOMAINS)
