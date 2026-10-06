@@ -19,18 +19,20 @@ pip install -r requirements.txt
 
 ## Data
 
-This project uses the TXD-22 dataset (Iqbal & Abul Kashem, 2026), avialable on
+This project uses the TXD-22 dataset (Iqbal & Abul Kashem, 2026), available on
 [Kaggle](https://www.kaggle.com/datasets/mdsadiqiqbal/txd-22-a-large-scale-benchmark-dataset)
+
 The raw file is too large for GitHub, so it is not included in the repository.
 
 1. Download the CSV from Kaggle.
 2. Save it as `data/TXD-22 A Large-Scale Benchmark Dataset.csv`
-3. Run `data/filter_and_label_data` to prepare data for our machine learning pipeline.
+3. Run `data/filter_and_label_data.py` to prepare data for our machine learning pipeline.
+4. The filtered and labeled data will be output to `data\TXD-22 Filtered and Labeled.csv`
 
 ### Data fixes
 
 We keep the ChatGPT, Claude, Mistral AI, Copilot, and Qwen sources. Each source has
-3,000 rows: 30 subjects with 100 questions each, in the same order. The dataset
+3,000 rows: 30 subjects with 100 questions each, in the same order, except for the issues below. The dataset
 has no subject column, so `filter_and_label_data.py` assigns each row's subject
 from its position.
 
