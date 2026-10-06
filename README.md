@@ -26,7 +26,7 @@ The raw file is too large for GitHub, so it is not included in the repository.
 
 1. Download the CSV from Kaggle.
 2. Save it as `data/TXD-22 A Large-Scale Benchmark Dataset.csv`
-3. Run `data/filter_and_label_data.py` to prepare data for our machine learning pipeline.
+3. Run `filter_and_label_data.py` to prepare data for our machine learning pipeline.
 4. The filtered and labeled data will be output to `data\TXD-22 Filtered and Labeled.csv`
 
 ### Data fixes
@@ -69,3 +69,8 @@ from its position.
   (`CUT_OFF_QUESTION_IDS`) are dropped from all five sources, removing 25 more
   rows and leaving 2,857 questions per source. This step is its own function
   (`drop_cut_off_questions`), so it can be turned off on its own.
+
+### Note for developers
+
+Repository structure was flattened to make it easier for us to run python files that import functions from other files.
+Neural network implementions will go in `/cnn.py` and `/rnn.py` respectively.
