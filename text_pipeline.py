@@ -118,7 +118,7 @@ def encode(tokenized_text: list[str], vocab: dict[str, int], max_length: int) ->
     return input_ids
 
 # Generic function for getting all 3 data loaders to be used with pytorch neural networks. 
-def get_data_loaders(condition: Literal["outputs", "inputs", "both"]) -> tuple[DataLoader, DataLoader, DataLoader, int, int]:
+def get_data_loaders(condition: Literal["outputs", "inputs", "both"]) -> tuple[DataLoader, DataLoader, DataLoader, int, int, list[str]]:
 
     max_length = MAX_LENGTHS[condition]
 
@@ -130,7 +130,9 @@ def get_data_loaders(condition: Literal["outputs", "inputs", "both"]) -> tuple[D
     vocab = build_vocab(tokenize_for_condition(train_df, condition))
 
     # Assign each source to a integer
-    label_ids = {name: i for i, name in enumerate(sorted(train_df["Source"].unique()))}
+    label_names = sorted(train_df["Source"].unique())
+    
+    label_ids = {name: i for i, name in enumerate(label_names)}
 
     # Helper for creating data loaders for teh 3 splits
     def get_data_loader(df, should_shuffle = False) -> DataLoader:
@@ -156,7 +158,7 @@ def get_data_loaders(condition: Literal["outputs", "inputs", "both"]) -> tuple[D
     print(f"[get_data_loaders] Finished getting data loaders for all splits, vocab size: {vocab_size}, num labels: {num_labels}")
 
     # Expose vocab size and number of labels for model creation.
-    return train_data_loader, val_data_loader, test_data_loader, vocab_size, num_labels
+    return train_data_loader, val_data_loader, test_data_loader, vocab_size, num_labels, label_names
 
 # Test that it works.
 def main():

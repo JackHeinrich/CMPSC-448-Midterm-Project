@@ -11,6 +11,8 @@ def train_one_epoch(model: nn.Module, train_loader: DataLoader, optimizer: torch
     # Training mode turns dropout on
     model.train()
 
+    device = get_model_device(model)
+
     total_loss = 0
 
     # Loop over every batch
@@ -45,6 +47,8 @@ def evaluate(model: nn.Module, eval_loader: DataLoader) -> tuple[float, list[int
 
     # Switch to eval mode to disable dropout
     model.eval()
+
+    device = get_model_device(model)
 
     # Stop tracking gradients since we won't use gradients from evaluation operations.
     with torch.no_grad():
