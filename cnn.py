@@ -1,3 +1,4 @@
+import copy
 import torch
 import torch.nn as nn
 
@@ -57,16 +58,86 @@ class CNN(nn.Module):
 
         return logits
 
+# Do one pass through the training data set and update weights
+def train_one_epoch(cnn, train_loader, optimizer, loss_function) -> float:
+
+    # Training mode turns dropout on
+    cnn.train()
+
+    total_loss = 0
+
+    # Loop over every batch
+    for inputs, labels in train_loader:
+
+        # Reset weight's stored gradient
+        optimizer.zero_grad()
+
+        # Get models prediction
+        logits = cnn(inputs)
+
+        # Calculate loss for this batch
+        loss = loss_function(logits, labels)
+
+        # Backpropogate to get gradients for all weights
+        loss.backward()
+
+        # Update weights using gradients from backpropagation
+        optimizer.step()
+
+        # Accumulate loss
+        total_loss += loss.item()
+
+    # Return average loss
+    return total_loss / len(train_loader)
+
+# For each entry in eval data set, check models prediction against actual label.
+def evaluate(cnn, eval_loader) -> tuple[float, list[int], list[int]]:
+
+    # Switch to eval mode to disable dropout
+    cnn.eval()
+
+    # Stop tracking gradients since we won't use gradients from evaluation operations.
+    with torch.no_grad():
+        predictions = []
+        gold_labels = []
+
+        for inputs, labels in eval_loader:
+
+            # Get model scores
+            logits = cnn(inputs)
+
+            # Get highest score prediction
+            prediction = logits.argmax(dim=1)
+
+            # Append batch predictions and gold labels to lists
+            predictions.extend(prediction.tolist())
+            gold_labels.extend(labels.tolist())
+
+    correct = 0
+
+    # Count correct predictions
+    for i in range(len(predictions)):
+        if predictions[i] == gold_labels[i]:
+            correct += 1
+
+    accuracy = correct / len(predictions)
+
+    return accuracy, predictions, gold_labels
+
 def main() -> None:
+
+    # Seed for replicability
+    torch.manual_seed(1)
 
     # Getting training data set
     train_loader, val_loader, test_loader, vocab_size, num_labels = get_data_loaders(max_length=512, batch_size=32)
-    
 
     # Initialization specifications
     num_filters = 100
 
     embedding_dim = 300
+
+    training_epochs = 10
 
     cnn = CNN(embedding_dim=embedding_dim)
 
@@ -80,9 +151,46 @@ def main() -> None:
 
     cnn.initialize_output_layer(num_labels)
 
-    first_batch = next(iter(train_loader))[0]
+    #  Soft max loss function (-log(correct class probability))
+    loss_function = nn.CrossEntropyLoss()
 
-    print(f"[main] The model works, here are it's predictions for the first batch of training data: \n{cnn(first_batch)}")
+    # Optimizer used for updated weights using Adam to pick learning rate for each weight.
+    optimizer = torch.optim.Adam(params=cnn.parameters())
+
+    # Track best accuracy to use weights with best validation performance preventing overfitting
+    best_epoch_accuracy = 0
+
+    best_weights = None
+
+    best_epoch = None
+
+    # Train, then evaluate against validate data set
+    for i in range(training_epochs):
+        epoch_num = i + 1
+        print(f"[Main] Training epoch {epoch_num}")
+        epoch_loss = train_one_epoch(cnn=cnn, train_loader=train_loader, optimizer=optimizer, loss_function=loss_function)
+        print(f"[Main] Finished training epoch {epoch_num}, loss: {epoch_loss}")
+        print(f"[Main] Validating after epoch {epoch_num}")
+        accuracy, _, _ = evaluate(cnn=cnn, val_loader=val_loader)
+
+        # Update best epoch weights
+        if accuracy > best_epoch_accuracy:
+            best_epoch_accuracy = accuracy
+            best_weights = copy.deepcopy(cnn.state_dict())
+            best_epoch = epoch_num
+
+        print(f"[Main] Validated after epoch {epoch_num}, accuracy: {accuracy}")
+
+    # Load weights with best validation performance
+    cnn.load_state_dict(best_weights)
+
+    print(f"[Main] Finished training for {training_epochs} epochs")
+    print(f"[Main] best epoch: {best_epoch}, best validation accuracy: {best_epoch_accuracy}")
+    print(f"[Main] Beginning final test.")
+    # Final test
+    final_accuracy, _, _ = evaluate(cnn, test_loader)
+    print(f"[Main] final test complete. Final test accuracy: {final_accuracy}")
+    
 
 if __name__ == "__main__":
     main()
