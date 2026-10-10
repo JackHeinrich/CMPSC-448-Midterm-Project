@@ -171,7 +171,7 @@ def main() -> None:
         epoch_loss = train_one_epoch(cnn=cnn, train_loader=train_loader, optimizer=optimizer, loss_function=loss_function)
         print(f"[Main] Finished training epoch {epoch_num}, loss: {epoch_loss}")
         print(f"[Main] Validating after epoch {epoch_num}")
-        accuracy, _, _ = evaluate(cnn=cnn, val_loader=val_loader)
+        accuracy, _, _ = evaluate(cnn=cnn, eval_loader=val_loader)
 
         # Update best epoch weights
         if accuracy > best_epoch_accuracy:
@@ -188,7 +188,7 @@ def main() -> None:
     print(f"[Main] best epoch: {best_epoch}, best validation accuracy: {best_epoch_accuracy}")
     print(f"[Main] Beginning final test.")
     # Final test
-    final_accuracy, _, _ = evaluate(cnn, test_loader)
+    final_accuracy, _, _ = evaluate(cnn=cnn, eval_loader=test_loader)
     print(f"[Main] final test complete. Final test accuracy: {final_accuracy}")
     
 
