@@ -17,6 +17,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### GPU (optional)
+
+`cnn.py` and `rnn.py` train on an NVIDIA GPU automatically when PyTorch can see
+one, and fall back to the CPU otherwise. Each script prints
+`[Main] Training on device: ...` at startup.
+
+On Windows, `pip install -r requirements.txt` installs the CPU-only build of
+PyTorch. To use a GPU, reinstall PyTorch with CUDA support using the command
+from the [PyTorch install selector](https://pytorch.org/get-started/locally/),
+then check that it worked:
+
+```bash
+python -c "import torch; print(torch.cuda.is_available())"
+```
+
 ## Data
 
 This project uses the TXD-22 dataset (Iqbal & Abul Kashem, 2026), available on

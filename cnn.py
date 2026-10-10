@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 from text_pipeline import get_data_loaders, PADDING_IDX
 
-from training import train_one_epoch, evaluate, get_device
+from training import train_one_epoch, evaluate, DEVICE
 
 class CNN(nn.Module):
 
@@ -85,8 +85,10 @@ def evaluate_cnn_on_condition(condition, training_epochs) -> tuple[float, list[i
 
     cnn.initialize_output_layer(num_labels)
 
-    # Try move device to gpu if possible
-    cnn.to(get_device())
+    # Move all weights to the GPU if available. Must happen before creating the optimizer.
+    cnn.to(DEVICE)
+
+    print(f"[Main] Training on device: {DEVICE}")
 
     #  Soft max loss function (-log(correct class probability))
     loss_function = nn.CrossEntropyLoss()
