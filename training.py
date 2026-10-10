@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
+# Train on the GPU if one with CUDA is available, otherwise fall back to the CPU. Models must be moved here with model.to(DEVICE) before training.
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # Do one pass through the training data set and update weights
 def train_one_epoch(model: nn.Module, train_loader: DataLoader, optimizer: torch.optim.Optimizer, loss_function: nn.CrossEntropyLoss) -> float:
 
@@ -12,6 +15,9 @@ def train_one_epoch(model: nn.Module, train_loader: DataLoader, optimizer: torch
 
     # Loop over every batch
     for inputs, labels in train_loader:
+
+        # Move batch to the same device as the model
+        inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
 
         # Reset weights stored gradient
         optimizer.zero_grad()
@@ -46,6 +52,9 @@ def evaluate(model: nn.Module, eval_loader: DataLoader) -> tuple[float, list[int
         gold_labels = []
 
         for inputs, labels in eval_loader:
+
+            # Move batch to the same device as the model
+            inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
 
             # Get model scores
             logits = model(inputs)
