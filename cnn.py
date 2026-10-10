@@ -66,7 +66,7 @@ def main() -> None:
     torch.manual_seed(1)
 
     # Getting training data set
-    train_loader, val_loader, test_loader, vocab_size, num_labels = get_data_loaders(max_length=512, batch_size=32)
+    train_loader, val_loader, test_loader, vocab_size, num_labels = get_data_loaders(condition="outputs")
 
     # Initialization specifications
     num_filters = 100
