@@ -1,12 +1,11 @@
-import copy
 import torch
 import torch.nn as nn
 
 import torch.nn.functional as F
 
-from text_pipeline import get_data_loaders, PADDING_IDX
+from text_pipeline import get_data_loaders, get_cross_domain_data_loaders, PADDING_IDX
 
-from training import train_one_epoch, evaluate, DEVICE
+from training import train_model, evaluate
 
 class CNN(nn.Module):
 
@@ -60,13 +59,8 @@ class CNN(nn.Module):
 
         return logits
 
-def evaluate_cnn_on_condition(condition, training_epochs, training_domain: str | None = None, testing_domain: str | None = None) -> tuple[float, list[int], list[int], list[str]]:
-
-    # Seed for replicability
-    torch.manual_seed(1)
-
-    # Getting training data set
-    train_loader, val_loader, test_loader, vocab_size, num_labels, label_names = get_data_loaders(condition, train_domain=training_domain, test_domain=testing_domain)
+# Build a CNN with the settings used for every experiment.
+def build_cnn(vocab_size: int, num_labels: int) -> CNN:
 
     # Initialization specifications
     num_filters = 100
@@ -85,53 +79,44 @@ def evaluate_cnn_on_condition(condition, training_epochs, training_domain: str |
 
     cnn.initialize_output_layer(num_labels)
 
-    # Move all weights to the GPU if available. Must happen before creating the optimizer.
-    cnn.to(DEVICE)
+    return cnn
 
-    print(f"[Main] Training on device: {DEVICE}")
+# Train a CNN on one condition, then test it once on the test set (research questions 1 and 2).
+def evaluate_cnn_on_condition(condition, training_epochs, training_domain: str | None = None, testing_domain: str | None = None) -> tuple[float, list[int], list[int], list[str]]:
 
-    #  Soft max loss function (-log(correct class probability))
-    loss_function = nn.CrossEntropyLoss()
+    # Seed for replicability
+    torch.manual_seed(1)
 
-    # Optimizer used for updated weights using Adam to pick learning rate for each weight.
-    optimizer = torch.optim.Adam(params=cnn.parameters())
+    # Getting training data set
+    train_loader, val_loader, test_loader, vocab_size, num_labels, label_names = get_data_loaders(condition, train_domain=training_domain, test_domain=testing_domain)
 
-    # Track best accuracy to use weights with best validation performance preventing overfitting
-    best_epoch_accuracy = 0
+    cnn = train_model(build_cnn(vocab_size, num_labels), train_loader, val_loader, training_epochs)
 
-    best_weights = None
-
-    best_epoch = None
-
-    # Train, then evaluate against validate data set
-    for i in range(training_epochs):
-        epoch_num = i + 1
-        print(f"[Main] Training epoch {epoch_num}")
-        epoch_loss = train_one_epoch(model=cnn, train_loader=train_loader, optimizer=optimizer, loss_function=loss_function)
-        print(f"[Main] Finished training epoch {epoch_num}, loss: {epoch_loss}")
-        print(f"[Main] Validating after epoch {epoch_num}")
-        accuracy, _, _ = evaluate(model=cnn, eval_loader=val_loader)
-
-        # Update best epoch weights
-        if accuracy > best_epoch_accuracy:
-            best_epoch_accuracy = accuracy
-            best_weights = copy.deepcopy(cnn.state_dict())
-            best_epoch = epoch_num
-
-        print(f"[Main] Validated after epoch {epoch_num}, accuracy: {accuracy}")
-
-    # Load weights with best validation performance
-    cnn.load_state_dict(best_weights)
-
-    print(f"[Main] Finished training for {training_epochs} epochs")
-    print(f"[Main] best epoch: {best_epoch}, best validation accuracy: {best_epoch_accuracy}")
     print(f"[Main] Beginning final test.")
     # Final test
     final_accuracy, predictions, actual_answers = evaluate(model=cnn, eval_loader=test_loader)
     print(f"[Main] final test complete. Final test accuracy: {final_accuracy}")
 
     return final_accuracy, predictions, actual_answers, label_names
-    
+
+# Train a CNN once on training_domain, then test it on every domain's test questions (research question 3).
+# Returns {testing domain: (accuracy, predictions, gold labels)} and the label names.
+def evaluate_cnn_across_domains(condition, training_epochs, training_domain: str) -> tuple[dict[str, tuple[float, list[int], list[int]]], list[str]]:
+
+    # Seed for replicability
+    torch.manual_seed(1)
+
+    train_loader, val_loader, test_loaders, vocab_size, num_labels, label_names = get_cross_domain_data_loaders(condition, training_domain)
+
+    cnn = train_model(build_cnn(vocab_size, num_labels), train_loader, val_loader, training_epochs)
+
+    results = {}
+
+    for testing_domain, test_loader in test_loaders.items():
+        results[testing_domain] = evaluate(model=cnn, eval_loader=test_loader)
+        print(f"[Main] Trained on {training_domain}, tested on {testing_domain}, accuracy: {results[testing_domain][0]}")
+
+    return results, label_names
 
 def main() -> None:
     evaluate_cnn_on_condition("outputs", 1)

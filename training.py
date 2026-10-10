@@ -1,3 +1,4 @@
+import copy
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -76,3 +77,50 @@ def evaluate(model: nn.Module, eval_loader: DataLoader) -> tuple[float, list[int
     accuracy = correct / len(predictions)
 
     return accuracy, predictions, gold_labels
+
+# Train a model for training_epochs, validating after every epoch, and keep the weights from the epoch with the best validation accuracy to prevent overfitting.
+# Shared by the CNN and RNN so both models are trained the exact same way.
+def train_model(model: nn.Module, train_loader: DataLoader, val_loader: DataLoader, training_epochs: int) -> nn.Module:
+
+    # Move all weights to the GPU if available. Must happen before creating the optimizer.
+    model.to(DEVICE)
+
+    print(f"[train_model] Training on device: {DEVICE}")
+
+    #  Soft max loss function (-log(correct class probability))
+    loss_function = nn.CrossEntropyLoss()
+
+    # Optimizer used for updated weights using Adam to pick learning rate for each weight.
+    optimizer = torch.optim.Adam(params=model.parameters())
+
+    # Track best accuracy to use weights with best validation performance preventing overfitting. Starts below 0 so the first epoch is always kept.
+    best_epoch_accuracy = -1
+
+    best_weights = None
+
+    best_epoch = None
+
+    # Train, then evaluate against validate data set
+    for i in range(training_epochs):
+        epoch_num = i + 1
+        print(f"[train_model] Training epoch {epoch_num}")
+        epoch_loss = train_one_epoch(model=model, train_loader=train_loader, optimizer=optimizer, loss_function=loss_function)
+        print(f"[train_model] Finished training epoch {epoch_num}, loss: {epoch_loss}")
+        print(f"[train_model] Validating after epoch {epoch_num}")
+        accuracy, _, _ = evaluate(model=model, eval_loader=val_loader)
+
+        # Update best epoch weights
+        if accuracy > best_epoch_accuracy:
+            best_epoch_accuracy = accuracy
+            best_weights = copy.deepcopy(model.state_dict())
+            best_epoch = epoch_num
+
+        print(f"[train_model] Validated after epoch {epoch_num}, accuracy: {accuracy}")
+
+    # Load weights with best validation performance
+    model.load_state_dict(best_weights)
+
+    print(f"[train_model] Finished training for {training_epochs} epochs")
+    print(f"[train_model] best epoch: {best_epoch}, best validation accuracy: {best_epoch_accuracy}")
+
+    return model

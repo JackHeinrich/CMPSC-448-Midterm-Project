@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import numpy as np
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, recall_score
 
 def create_confusion_matrix(predictions: list[int], gold_labels: list[int], label_names: list[str], title: str) -> None:
     #Map names to an int
@@ -24,6 +25,45 @@ def create_confusion_matrix(predictions: list[int], gold_labels: list[int], labe
     # Rotate x tick labels by 30 deg si they dont overlap
     plt.setp(axes.get_xticklabels(), rotation=30, ha="right")
     
+    figure.tight_layout()
+
+    # Save to results
+    figure.savefig(f"results/{title}.png")
+
+    plt.close(figure)
+
+# Fraction of each LLM's responses that were correctly identified (recall), as {label name: recall}.
+# These are the same numbers as the diagonal of the confusion matrix.
+def per_label_recall(predictions: list[int], gold_labels: list[int], label_names: list[str]) -> dict[str, float]:
+    recalls = recall_score(y_true=gold_labels, y_pred=predictions, labels=list(range(len(label_names))), average=None, zero_division=0)
+    return {label_name: float(recall) for label_name, recall in zip(label_names, recalls)}
+
+# Draw research question 3's grid of accuracies, with training domains as rows and testing domains as columns.
+# The diagonal is in-domain accuracy. Reading down a column compares in-domain and cross-domain accuracy on the same test questions.
+def create_domain_accuracy_grid(accuracies: dict[tuple[str, str], float], domains: list[str], title: str) -> None:
+
+    # grid[row][column] = accuracy of the model trained on domains[row] and tested on domains[column]
+    grid = np.array([[accuracies[(training_domain, testing_domain)] for testing_domain in domains] for training_domain in domains])
+
+    # Create image
+    figure, axes = plt.subplots(figsize=(7, 6))
+
+    # Draw table, scaled from 0 to 100% so grids for different models are comparable
+    axes.imshow(grid, cmap="Blues", vmin=0, vmax=1)
+
+    # Write the accuracy in each cell, using white text on dark cells so it stays readable
+    for row in range(len(domains)):
+        for column in range(len(domains)):
+            text_color = "white" if grid[row, column] > 0.6 else "black"
+            axes.text(column, row, f"{grid[row, column]:.0%}", ha="center", va="center", color=text_color)
+
+    axes.set_xticks(range(len(domains)), labels=domains)
+    axes.set_yticks(range(len(domains)), labels=domains)
+
+    axes.set_title(title)
+    axes.set_xlabel("Testing domain")
+    axes.set_ylabel("Training domain")
+
     figure.tight_layout()
 
     # Save to results
