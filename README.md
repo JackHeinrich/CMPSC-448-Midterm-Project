@@ -74,3 +74,7 @@ from its position.
 
 Repository structure was flattened to make it easier for us to run python files that import functions from other files.
 Neural network implementions will go in `/cnn.py` and `/rnn.py` respectively.
+
+### Data collection
+
+`/research_questions.py` is the entry point that will invoke all of our implementations to train the neural networks and export the results.

@@ -1,2 +1,5 @@
 pandas
 ftfy
+scikit-learn
+matplotlib
+torch

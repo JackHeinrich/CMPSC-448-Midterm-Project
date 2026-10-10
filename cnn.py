@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 from text_pipeline import get_data_loaders, PADDING_IDX
 
-from training import train_one_epoch, evaluate
+from training import train_one_epoch, evaluate, get_device
 
 class CNN(nn.Module):
 
@@ -60,20 +60,18 @@ class CNN(nn.Module):
 
         return logits
 
-def main() -> None:
+def evaluate_cnn_on_condition(condition, training_epochs) -> tuple[float, list[int], list[int], list[str]]:
 
     # Seed for replicability
     torch.manual_seed(1)
 
     # Getting training data set
-    train_loader, val_loader, test_loader, vocab_size, num_labels = get_data_loaders(condition="outputs")
+    train_loader, val_loader, test_loader, vocab_size, num_labels, label_names = get_data_loaders(condition)
 
     # Initialization specifications
     num_filters = 100
 
     embedding_dim = 300
-
-    training_epochs = 10
 
     cnn = CNN(embedding_dim=embedding_dim)
 
@@ -86,6 +84,9 @@ def main() -> None:
     cnn.initialize_dropout_layer(p=0.5)
 
     cnn.initialize_output_layer(num_labels)
+
+    # Try move device to gpu if possible
+    cnn.to(get_device())
 
     #  Soft max loss function (-log(correct class probability))
     loss_function = nn.CrossEntropyLoss()
@@ -124,9 +125,14 @@ def main() -> None:
     print(f"[Main] best epoch: {best_epoch}, best validation accuracy: {best_epoch_accuracy}")
     print(f"[Main] Beginning final test.")
     # Final test
-    final_accuracy, _, _ = evaluate(model=cnn, eval_loader=test_loader)
+    final_accuracy, predictions, actual_answers = evaluate(model=cnn, eval_loader=test_loader)
     print(f"[Main] final test complete. Final test accuracy: {final_accuracy}")
+
+    return final_accuracy, predictions, actual_answers, label_names
     
+
+def main() -> None:
+    evaluate_cnn_on_condition("outputs", 1)
 
 if __name__ == "__main__":
     main()

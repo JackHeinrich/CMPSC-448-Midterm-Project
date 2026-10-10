@@ -2,16 +2,39 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
+# Adapted from Chris Tran's "A Complete Guide to CNN for Sentence Classification with PyTorch"
+def get_device() -> torch.device:
+    if torch.cuda.is_available():       
+        device = torch.device("cuda")
+        print(f'There are {torch.cuda.device_count()} GPU(s) available.')
+        print('Device name:', torch.cuda.get_device_name(0))
+
+    else:
+        print('No GPU available, using the CPU instead.')
+        device = torch.device("cpu")
+
+    return device
+
+# Get device that a model is on
+def get_model_device(model: nn.Module) -> torch.device:
+    return next(model.parameters()).device
+
 # Do one pass through the training data set and update weights
 def train_one_epoch(model: nn.Module, train_loader: DataLoader, optimizer: torch.optim.Optimizer, loss_function: nn.CrossEntropyLoss) -> float:
 
     # Training mode turns dropout on
     model.train()
 
+    device = get_model_device(model)
+
     total_loss = 0
 
     # Loop over every batch
     for inputs, labels in train_loader:
+
+        # Move inputs and labels to model device (hopefully a GPU)
+        inputs = inputs.to(device)
+        labels=  labels.to(device)
 
         # Reset weights stored gradient
         optimizer.zero_grad()
@@ -40,12 +63,17 @@ def evaluate(model: nn.Module, eval_loader: DataLoader) -> tuple[float, list[int
     # Switch to eval mode to disable dropout
     model.eval()
 
+    device = get_model_device(model)
+
     # Stop tracking gradients since we won't use gradients from evaluation operations.
     with torch.no_grad():
         predictions = []
         gold_labels = []
 
         for inputs, labels in eval_loader:
+
+            inputs = inputs.to(device)
+            labels=  labels.to(device)
 
             # Get model scores
             logits = model(inputs)

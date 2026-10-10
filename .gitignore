@@ -1,4 +1,6 @@
 .venv/
 data/*.csv
 Midterm project-1.pdf
-.__pycache__/
+__pycache__/
+results/*
+!results/.gitkeep
