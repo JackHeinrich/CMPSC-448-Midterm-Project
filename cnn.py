@@ -60,13 +60,13 @@ class CNN(nn.Module):
 
         return logits
 
-def evaluate_cnn_on_condition(condition, training_epochs) -> tuple[float, list[int], list[int], list[str]]:
+def evaluate_cnn_on_condition(condition, training_epochs, training_domain: str | None = None, testing_domain: str | None = None) -> tuple[float, list[int], list[int], list[str]]:
 
     # Seed for replicability
     torch.manual_seed(1)
 
     # Getting training data set
-    train_loader, val_loader, test_loader, vocab_size, num_labels, label_names = get_data_loaders(condition)
+    train_loader, val_loader, test_loader, vocab_size, num_labels, label_names = get_data_loaders(condition, train_domain=training_domain, test_domain=testing_domain)
 
     # Initialization specifications
     num_filters = 100

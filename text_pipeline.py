@@ -8,6 +8,8 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from data_splitter import load_splits
 
+from data_pipeline import STEM, SOCIAL_SCIENCE, HUMANITIES
+
 # Text pipeline adapted from Chris Tran's "A Complete Guide to CNN for Sentence Classification with PyTorch"
 
 # Padding index exported to keep consistent across nn implementations
@@ -118,13 +120,30 @@ def encode(tokenized_text: list[str], vocab: dict[str, int], max_length: int) ->
     return input_ids
 
 # Generic function for getting all 3 data loaders to be used with pytorch neural networks. 
-def get_data_loaders(condition: Literal["outputs", "inputs", "both"]) -> tuple[DataLoader, DataLoader, DataLoader, int, int, list[str]]:
+def get_data_loaders(condition: Literal["outputs", "inputs", "both"], train_domain: str | None = None, test_domain: str | None = None) -> tuple[DataLoader, DataLoader, DataLoader, int, int, list[str]]:
 
     max_length = MAX_LENGTHS[condition]
 
-    print(f"[get_data_loaders] Getting data loaders, max length: {max_length}, batch size: {BATCH_SIZE}, condition: {condition}")
+    print(f"[get_data_loaders] Getting data loaders, max length: {max_length}, batch size: {BATCH_SIZE}, condition: {condition}, training domain: {train_domain}, testing domain: {test_domain}")
 
     train_df, val_df, test_df = load_splits()
+
+    valid_domains = [SOCIAL_SCIENCE, STEM, HUMANITIES]
+
+    # If train domain, pick only training examples and val examples where their domain is in training domain
+    if train_domain is not None:
+        if train_domain not in valid_domains:
+            raise ValueError(f"Unknown training domain {train_domain!r}. Expected '{STEM}', '{SOCIAL_SCIENCE}', or '{HUMANITIES}'.")
+        
+        train_df = train_df[train_df["domain"] == train_domain]
+        val_df = val_df[val_df["domain"] == train_domain]
+
+    # If test domain, take only test examples where domain is in test domain
+    if test_domain is not None:
+        if test_domain not in valid_domains:
+            raise ValueError(f"Unknown testing domain {test_domain!r}. Expected '{STEM}', '{SOCIAL_SCIENCE}', or '{HUMANITIES}'.")
+
+        test_df = test_df[test_df["domain"] == test_domain]
 
     # Build vocab based off of condition
     vocab = build_vocab(tokenize_for_condition(train_df, condition))
