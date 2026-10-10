@@ -6,6 +6,8 @@ import torch.nn.functional as F
 
 from text_pipeline import get_data_loaders, PADDING_IDX
 
+from training import train_one_epoch, evaluate
+
 class CNN(nn.Module):
 
     def __init__(self, embedding_dim) -> None:
@@ -58,72 +60,6 @@ class CNN(nn.Module):
 
         return logits
 
-# Do one pass through the training data set and update weights
-def train_one_epoch(cnn, train_loader, optimizer, loss_function) -> float:
-
-    # Training mode turns dropout on
-    cnn.train()
-
-    total_loss = 0
-
-    # Loop over every batch
-    for inputs, labels in train_loader:
-
-        # Reset weight's stored gradient
-        optimizer.zero_grad()
-
-        # Get models prediction
-        logits = cnn(inputs)
-
-        # Calculate loss for this batch
-        loss = loss_function(logits, labels)
-
-        # Backpropogate to get gradients for all weights
-        loss.backward()
-
-        # Update weights using gradients from backpropagation
-        optimizer.step()
-
-        # Accumulate loss
-        total_loss += loss.item()
-
-    # Return average loss
-    return total_loss / len(train_loader)
-
-# For each entry in eval data set, check models prediction against actual label.
-def evaluate(cnn, eval_loader) -> tuple[float, list[int], list[int]]:
-
-    # Switch to eval mode to disable dropout
-    cnn.eval()
-
-    # Stop tracking gradients since we won't use gradients from evaluation operations.
-    with torch.no_grad():
-        predictions = []
-        gold_labels = []
-
-        for inputs, labels in eval_loader:
-
-            # Get model scores
-            logits = cnn(inputs)
-
-            # Get highest score prediction
-            prediction = logits.argmax(dim=1)
-
-            # Append batch predictions and gold labels to lists
-            predictions.extend(prediction.tolist())
-            gold_labels.extend(labels.tolist())
-
-    correct = 0
-
-    # Count correct predictions
-    for i in range(len(predictions)):
-        if predictions[i] == gold_labels[i]:
-            correct += 1
-
-    accuracy = correct / len(predictions)
-
-    return accuracy, predictions, gold_labels
-
 def main() -> None:
 
     # Seed for replicability
@@ -168,10 +104,10 @@ def main() -> None:
     for i in range(training_epochs):
         epoch_num = i + 1
         print(f"[Main] Training epoch {epoch_num}")
-        epoch_loss = train_one_epoch(cnn=cnn, train_loader=train_loader, optimizer=optimizer, loss_function=loss_function)
+        epoch_loss = train_one_epoch(model=cnn, train_loader=train_loader, optimizer=optimizer, loss_function=loss_function)
         print(f"[Main] Finished training epoch {epoch_num}, loss: {epoch_loss}")
         print(f"[Main] Validating after epoch {epoch_num}")
-        accuracy, _, _ = evaluate(cnn=cnn, eval_loader=val_loader)
+        accuracy, _, _ = evaluate(model=cnn, eval_loader=val_loader)
 
         # Update best epoch weights
         if accuracy > best_epoch_accuracy:
@@ -188,7 +124,7 @@ def main() -> None:
     print(f"[Main] best epoch: {best_epoch}, best validation accuracy: {best_epoch_accuracy}")
     print(f"[Main] Beginning final test.")
     # Final test
-    final_accuracy, _, _ = evaluate(cnn=cnn, eval_loader=test_loader)
+    final_accuracy, _, _ = evaluate(model=cnn, eval_loader=test_loader)
     print(f"[Main] final test complete. Final test accuracy: {final_accuracy}")
     
 
