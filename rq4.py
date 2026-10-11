@@ -194,7 +194,11 @@ def create_answer_length_plot(df: pd.DataFrame, title: str) -> None:
     lengths = [df[df["Source"] == source]["Answer"].map(lambda text: len(WORD_PATTERN.findall(text))) for source in sources]
 
     figure, axes = plt.subplots(figsize=(7, 5))
-    axes.boxplot(lengths, tick_labels=sources, showfliers=False)
+    axes.boxplot(lengths, showfliers=False)
+
+    # Name the boxes with set_xticklabels rather than boxplot's label argument, which was renamed in matplotlib 3.9 (labels -> tick_labels) and fails on other versions
+    axes.set_xticks(range(1, len(sources) + 1))
+    axes.set_xticklabels(sources)
 
     axes.set_title(title)
     axes.set_xlabel("LLM")

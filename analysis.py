@@ -59,8 +59,10 @@ def create_domain_accuracy_grid(accuracies: dict[tuple[str, str], float], domain
             text_color = "white" if grid[row, column] > 0.6 else "black"
             axes.text(column, row, f"{grid[row, column]:.0%}", ha="center", va="center", color=text_color)
 
-    axes.set_xticks(range(len(domains)), labels=domains)
-    axes.set_yticks(range(len(domains)), labels=domains)
+    axes.set_xticks(range(len(domains)))
+    axes.set_xticklabels(domains)
+    axes.set_yticks(range(len(domains)))
+    axes.set_yticklabels(domains)
 
     axes.set_title(title)
     axes.set_xlabel("Testing domain")
