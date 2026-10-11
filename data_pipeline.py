@@ -35,8 +35,8 @@ STEM = "STEM"
 SOCIAL_SCIENCE = "Social Science"
 HUMANITIES = "Humanities"
 
-IN_PATH = "data\\TXD-22 A Large-Scale Benchmark Dataset.csv"
-OUT_PATH = "data\\TXD-22 Filtered and Labeled.csv"
+IN_PATH = "data/TXD-22 A Large-Scale Benchmark Dataset.csv"
+OUT_PATH = "data/TXD-22 Filtered and Labeled.csv"
 
 # Prompt topics in order mapped to their domain for extra credit question 3.
 SUBJECT_DOMAINS = {

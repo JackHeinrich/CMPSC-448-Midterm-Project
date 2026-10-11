@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-IN_PATH = "data\\TXD-22 Filtered and Labeled.csv"
+IN_PATH = "data/TXD-22 Filtered and Labeled.csv"
 
 # The cut of the dataset used for training, validation, and testing. (1 - TRAIN_PERCENT - VAL_PERCENT) is the test percent.
 TRAIN_PERCENT, VAL_PERCENT = 0.7, 0.1

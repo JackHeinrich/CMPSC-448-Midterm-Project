@@ -3,3 +3,4 @@ ftfy
 scikit-learn
 matplotlib
 torch
+numpy
