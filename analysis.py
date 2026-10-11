@@ -78,8 +78,8 @@ def create_training_curves(history_path: str, model_name: str, title: str) -> No
 
     history = pd.read_csv(history_path)
 
-    # Only the runs trained on all domains, which are the research question 1 and 2 runs
-    history = history[(history["model"] == model_name) & (history["training domain"] == "all")]
+    # Only the research question 1 and 2 runs: trained on all domains, with no signal removed (research question 4 runs have conditions like "outputs: no punctuation")
+    history = history[(history["model"] == model_name) & (history["training domain"] == "all") & history["condition"].isin(["outputs", "inputs", "both"])]
 
     # Create image with loss on the left and validation accuracy on the right
     figure, (loss_axes, accuracy_axes) = plt.subplots(1, 2, figsize=(11, 4.5))
