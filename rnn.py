@@ -93,7 +93,7 @@ def evaluate_rnn_on_condition(condition, training_epochs, training_domain: str |
     # Getting training data set
     train_loader, val_loader, test_loader, vocab_size, num_labels, label_names = get_data_loaders(condition, train_domain=training_domain, test_domain=testing_domain)
 
-    rnn = train_model(build_rnn(vocab_size, num_labels), train_loader, val_loader, training_epochs)
+    rnn = train_model(build_rnn(vocab_size, num_labels), train_loader, val_loader, training_epochs, model_name="rnn", condition=condition, training_domain=training_domain or "all")
 
     print(f"[Main] Beginning final test.")
     # Final test
@@ -111,7 +111,7 @@ def evaluate_rnn_across_domains(condition, training_epochs, training_domain: str
 
     train_loader, val_loader, test_loaders, vocab_size, num_labels, label_names = get_cross_domain_data_loaders(condition, training_domain)
 
-    rnn = train_model(build_rnn(vocab_size, num_labels), train_loader, val_loader, training_epochs)
+    rnn = train_model(build_rnn(vocab_size, num_labels), train_loader, val_loader, training_epochs, model_name="rnn", condition=condition, training_domain=training_domain)
 
     results = {}
 

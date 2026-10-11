@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import numpy as np
+import pandas as pd
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, recall_score
 
 def create_confusion_matrix(predictions: list[int], gold_labels: list[int], label_names: list[str], title: str) -> None:
@@ -63,6 +65,45 @@ def create_domain_accuracy_grid(accuracies: dict[tuple[str, str], float], domain
     axes.set_title(title)
     axes.set_xlabel("Testing domain")
     axes.set_ylabel("Training domain")
+
+    figure.tight_layout()
+
+    # Save to results
+    figure.savefig(f"results/{title}.png")
+
+    plt.close(figure)
+
+# Draw training loss and validation accuracy per epoch for one model's research question 1 and 2 runs (trained on all domains), with one line per condition.
+def create_training_curves(history_path: str, model_name: str, title: str) -> None:
+
+    history = pd.read_csv(history_path)
+
+    # Only the runs trained on all domains, which are the research question 1 and 2 runs
+    history = history[(history["model"] == model_name) & (history["training domain"] == "all")]
+
+    # Create image with loss on the left and validation accuracy on the right
+    figure, (loss_axes, accuracy_axes) = plt.subplots(1, 2, figsize=(11, 4.5))
+
+    for condition, runs in history.groupby("condition", sort=False):
+        loss_axes.plot(runs["epoch"], runs["training loss"], marker="o", label=condition)
+        accuracy_axes.plot(runs["epoch"], runs["validation accuracy"], marker="o", label=condition)
+
+    loss_axes.set_title("Training loss")
+    loss_axes.set_xlabel("Epoch")
+    loss_axes.set_ylabel("Average cross-entropy loss")
+
+    accuracy_axes.set_title("Validation accuracy")
+    accuracy_axes.set_xlabel("Epoch")
+    accuracy_axes.set_ylabel("Accuracy")
+    accuracy_axes.set_ylim(0, 1)
+
+    for axes in (loss_axes, accuracy_axes):
+        # Only whole epochs on the x axis
+        axes.xaxis.set_major_locator(MaxNLocator(integer=True))
+        axes.legend(title="Condition")
+        axes.grid(alpha=0.3)
+
+    figure.suptitle(title)
 
     figure.tight_layout()
 

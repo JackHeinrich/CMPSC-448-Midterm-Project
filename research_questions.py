@@ -1,9 +1,11 @@
 import csv
-from analysis import create_confusion_matrix, create_domain_accuracy_grid, per_label_recall
+from analysis import create_confusion_matrix, create_domain_accuracy_grid, per_label_recall, create_training_curves
 from cnn import evaluate_cnn_on_condition, evaluate_cnn_across_domains
 from rnn import evaluate_rnn_on_condition, evaluate_rnn_across_domains
 
 from text_pipeline import DOMAINS
+
+from training import reset_training_logs, TRAINING_HISTORY_PATH
 
 TRAINING_EPOCHS = 10
 
@@ -45,6 +47,9 @@ def write_recall_results(rows: list[tuple], label_names: list[str]) -> None:
 # Research questions
 
 def main() -> None:
+
+    # Start the training history and summary logs fresh for this run
+    reset_training_logs()
 
     # Rows of (model, condition, training domain, testing domain, accuracy)
     rows = []
@@ -90,6 +95,10 @@ def main() -> None:
                 write_recall_results(recall_rows, label_names)
 
         create_domain_accuracy_grid(domain_accuracies, DOMAINS, f"{model_name.upper()} Cross Domain Accuracy")
+
+    # Training curves for research questions 1 and 2, one figure per model
+    for model_name in MODELS:
+        create_training_curves(TRAINING_HISTORY_PATH, model_name, f"{model_name.upper()} Training Curves")
 
     # Print every result together at the end
     print("[Main] Results (model, condition, training domain, testing domain, accuracy):")

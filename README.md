@@ -19,9 +19,9 @@ pip install -r requirements.txt
 
 ### GPU (optional)
 
-`cnn.py` and `rnn.py` train on an NVIDIA GPU automatically when PyTorch can see
-one, and fall back to the CPU otherwise. Each script prints
-`[Main] Training on device: ...` at startup.
+The CNN and RNN train on an NVIDIA GPU automatically when PyTorch can see one,
+and fall back to the CPU otherwise. Every training run prints
+`[train_model] Training on device: ...` when it starts.
 
 On Windows, `pip install -r requirements.txt` installs the CPU-only build of
 PyTorch. To use a GPU, reinstall PyTorch with CUDA support using the command
@@ -41,14 +41,14 @@ The raw file is too large for GitHub, so it is not included in the repository.
 
 1. Download the CSV from Kaggle.
 2. Save it as `data/TXD-22 A Large-Scale Benchmark Dataset.csv`
-3. Run `filter_and_label_data.py` to prepare data for our machine learning pipeline.
+3. Run `python data_pipeline.py` to prepare data for our machine learning pipeline.
 4. The filtered and labeled data will be output to `data\TXD-22 Filtered and Labeled.csv`
 
 ### Data fixes
 
 We keep the ChatGPT, Claude, Mistral AI, Copilot, and Qwen sources. Each source has
 3,000 rows: 30 subjects with 100 questions each, in the same order, except for the issues below. The dataset
-has no subject column, so `filter_and_label_data.py` assigns each row's subject
+has no subject column, so `data_pipeline.py` assigns each row's subject
 from its position.
 
 - **Claude row order.** In the raw file, Claude's last Gender Studies question
@@ -85,11 +85,37 @@ from its position.
   rows and leaving 2,857 questions per source. This step is its own function
   (`drop_cut_off_questions`), so it can be turned off on its own.
 
-### Note for developers
+## Running the experiments
 
-Repository structure was flattened to make it easier for us to run python files that import functions from other files.
-Neural network implementions will go in `/cnn.py` and `/rnn.py` respectively.
+Run every experiment from the repository root after preparing the data:
 
-### Data collection
+```bash
+python research_questions.py
+```
 
-`/research_questions.py` is the entry point that will invoke all of our implementations to train the neural networks and export the results.
+This trains the CNN and RNN for research questions 1, 2, and 3 and writes the
+results to `results/`. Training uses the same train/validation/test split for
+both models (`data_splitter.py`), split by question so all five models' answers
+to a question are always in the same split.
+
+| File | Contents |
+| --- | --- |
+| `accuracies.csv` | Test accuracy for every run: RQ1/RQ2 (outputs only, inputs only, both) and RQ3 (every training domain → testing domain pair) |
+| `rq3_recall.csv` | RQ3: how often each LLM was identified correctly for every training domain → testing domain pair |
+| `training_history.csv` | Training loss, validation accuracy, and time for every epoch of every run |
+| `training_summary.csv` | Parameter count, best epoch, and total training time for every run |
+| `CNN/RNN ... Confusion Matrix.png` | RQ1/RQ2 confusion matrices for each model and condition |
+| `CNN/RNN Cross Domain Accuracy.png` | RQ3 grid: rows are the training domain, columns the testing domain |
+| `CNN/RNN Training Curves.png` | Training loss and validation accuracy per epoch for the RQ1/RQ2 runs |
+
+### Code layout
+
+| File | Purpose |
+| --- | --- |
+| `data_pipeline.py` | Cleans the raw dataset and adds subject and domain labels |
+| `data_splitter.py` | Train/validation/test split shared by both models |
+| `text_pipeline.py` | Tokenizing, vocabulary, and PyTorch data loaders |
+| `training.py` | Training loop, evaluation, and training logs shared by both models |
+| `cnn.py`, `rnn.py` | The CNN and RNN (bidirectional LSTM) models |
+| `analysis.py` | Confusion matrices, RQ3 grid, recall, and training curve plots |
+| `research_questions.py` | Runs every experiment and writes `results/` |
