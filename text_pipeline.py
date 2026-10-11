@@ -1,7 +1,7 @@
 import re
 
 from collections import Counter
-from typing import Literal
+from typing import Callable, Literal
 
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -63,8 +63,9 @@ def build_vocab(tokenized_vocab_building_set) -> dict[str, int]:
 
     return vocab
 
-# Tokenize a dfs outputs, inputs, or both into one list of tokenized texts
-def tokenize_for_condition(df, condition: Literal["outputs", "inputs", "both"]) -> list[list[str]]:
+# Tokenize a dfs outputs, inputs, or both into one list of tokenized texts.
+# answer_transform optionally changes each tokenized answer, used by research question 4 to remove a signal (like punctuation) before training.
+def tokenize_for_condition(df, condition: Literal["outputs", "inputs", "both"], answer_transform: Callable[[list[str]], list[str]] | None = None) -> list[list[str]]:
     
     # Stores the tokenized list for each questoin
     question_token_lists = []
@@ -78,6 +79,9 @@ def tokenize_for_condition(df, condition: Literal["outputs", "inputs", "both"]) 
     
     for text in df["Answer"]:
         answer_token_lists.append(tokenize(text))
+
+    if answer_transform is not None:
+        answer_token_lists = [answer_transform(answer_tokens) for answer_tokens in answer_token_lists]
 
     vocab_building_tokenized_texts = None
 
@@ -130,12 +134,12 @@ def check_domain(domain: str) -> None:
         raise ValueError(f"Unknown domain {domain!r}. Expected '{STEM}', '{SOCIAL_SCIENCE}', or '{HUMANITIES}'.")
 
 # Build the vocab from the training set and create data loaders for training, validation, and each named test set.
-def build_data_loaders(condition: Literal["outputs", "inputs", "both"], train_df: pd.DataFrame, val_df: pd.DataFrame, test_dfs: dict[str, pd.DataFrame]) -> tuple[DataLoader, DataLoader, dict[str, DataLoader], int, int, list[str]]:
+def build_data_loaders(condition: Literal["outputs", "inputs", "both"], train_df: pd.DataFrame, val_df: pd.DataFrame, test_dfs: dict[str, pd.DataFrame], answer_transform: Callable[[list[str]], list[str]] | None = None) -> tuple[DataLoader, DataLoader, dict[str, DataLoader], int, int, list[str]]:
 
     max_length = MAX_LENGTHS[condition]
 
     # Build vocab based off of condition
-    vocab = build_vocab(tokenize_for_condition(train_df, condition))
+    vocab = build_vocab(tokenize_for_condition(train_df, condition, answer_transform))
 
     # Assign each source to a integer
     label_names = sorted(train_df["Source"].unique())
@@ -144,7 +148,7 @@ def build_data_loaders(condition: Literal["outputs", "inputs", "both"], train_df
 
     # Helper for creating data loaders for teh 3 splits
     def get_data_loader(df, should_shuffle = False) -> DataLoader:
-        encoded_texts = encode(tokenized_text=tokenize_for_condition(df, condition), vocab=vocab, max_length=max_length)
+        encoded_texts = encode(tokenized_text=tokenize_for_condition(df, condition, answer_transform), vocab=vocab, max_length=max_length)
         
         #Create a 2D tensor for the (len(encoded_texts), max_length) inputs and a 1D tensor for the (len(encoded_texts)) labels. 
         inputs = torch.tensor(encoded_texts)
@@ -170,7 +174,7 @@ def build_data_loaders(condition: Literal["outputs", "inputs", "both"], train_df
     return train_data_loader, val_data_loader, test_data_loaders, vocab_size, num_labels, label_names
 
 # Generic function for getting all 3 data loaders to be used with pytorch neural networks. 
-def get_data_loaders(condition: Literal["outputs", "inputs", "both"], train_domain: str | None = None, test_domain: str | None = None) -> tuple[DataLoader, DataLoader, DataLoader, int, int, list[str]]:
+def get_data_loaders(condition: Literal["outputs", "inputs", "both"], train_domain: str | None = None, test_domain: str | None = None, answer_transform: Callable[[list[str]], list[str]] | None = None) -> tuple[DataLoader, DataLoader, DataLoader, int, int, list[str]]:
 
     print(f"[get_data_loaders] Getting data loaders, max length: {MAX_LENGTHS[condition]}, batch size: {BATCH_SIZE}, condition: {condition}, training domain: {train_domain}, testing domain: {test_domain}")
 
@@ -187,7 +191,7 @@ def get_data_loaders(condition: Literal["outputs", "inputs", "both"], train_doma
         check_domain(test_domain)
         test_df = test_df[test_df["domain"] == test_domain]
 
-    train_data_loader, val_data_loader, test_data_loaders, vocab_size, num_labels, label_names = build_data_loaders(condition, train_df, val_df, {"test": test_df})
+    train_data_loader, val_data_loader, test_data_loaders, vocab_size, num_labels, label_names = build_data_loaders(condition, train_df, val_df, {"test": test_df}, answer_transform)
 
     return train_data_loader, val_data_loader, test_data_loaders["test"], vocab_size, num_labels, label_names
 

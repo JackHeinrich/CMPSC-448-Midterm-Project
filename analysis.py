@@ -59,8 +59,10 @@ def create_domain_accuracy_grid(accuracies: dict[tuple[str, str], float], domain
             text_color = "white" if grid[row, column] > 0.6 else "black"
             axes.text(column, row, f"{grid[row, column]:.0%}", ha="center", va="center", color=text_color)
 
-    axes.set_xticks(range(len(domains)), labels=domains)
-    axes.set_yticks(range(len(domains)), labels=domains)
+    axes.set_xticks(range(len(domains)))
+    axes.set_xticklabels(domains)
+    axes.set_yticks(range(len(domains)))
+    axes.set_yticklabels(domains)
 
     axes.set_title(title)
     axes.set_xlabel("Testing domain")
@@ -78,8 +80,8 @@ def create_training_curves(history_path: str, model_name: str, title: str) -> No
 
     history = pd.read_csv(history_path)
 
-    # Only the runs trained on all domains, which are the research question 1 and 2 runs
-    history = history[(history["model"] == model_name) & (history["training domain"] == "all")]
+    # Only the research question 1 and 2 runs: trained on all domains, with no signal removed (research question 4 runs have conditions like "outputs: no punctuation")
+    history = history[(history["model"] == model_name) & (history["training domain"] == "all") & history["condition"].isin(["outputs", "inputs", "both"])]
 
     # Create image with loss on the left and validation accuracy on the right
     figure, (loss_axes, accuracy_axes) = plt.subplots(1, 2, figsize=(11, 4.5))

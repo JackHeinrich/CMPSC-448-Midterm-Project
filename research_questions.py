@@ -1,7 +1,11 @@
 import csv
+
+import pandas as pd
+
 from analysis import create_confusion_matrix, create_domain_accuracy_grid, per_label_recall, create_training_curves
-from cnn import evaluate_cnn_on_condition, evaluate_cnn_across_domains
-from rnn import evaluate_rnn_on_condition, evaluate_rnn_across_domains
+from cnn import build_cnn, evaluate_cnn_on_condition, evaluate_cnn_across_domains
+from rnn import build_rnn, evaluate_rnn_on_condition, evaluate_rnn_across_domains
+from rq4 import ABLATIONS, ablation_row, create_ablation_plot, describe_llm_differences, evaluate_ablation
 
 from text_pipeline import DOMAINS
 
@@ -16,6 +20,15 @@ RECALL_RESULTS_PATH = "results/rq3_recall.csv"
 
 # Research question 3 produces a confusion matrix for every (training domain, testing domain) pair, 18 in total. Off by default since RECALL_RESULTS_PATH summarizes them.
 SAVE_DOMAIN_CONFUSION_MATRICES = False
+
+# Research question 4: accuracy after removing each signal, compared with the research question 1 outputs only model.
+ABLATION_RESULTS_PATH = "results/rq4_ablation.csv"
+
+# Models to run the research question 4 ablations on. Each adds one training per ablation (4 per model).
+# Only the CNN by default to keep the run short. Add "rnn": build_rnn to also run them on the RNN.
+ABLATION_MODELS = {
+    "cnn": build_cnn
+}
 
 # Conditions for research question 2 and how they are named in figure titles.
 CONDITION_TITLES = {
@@ -57,6 +70,9 @@ def main() -> None:
     # Rows of (model, training domain, testing domain, recall of each LLM)
     recall_rows = []
 
+    # Research question 1 outputs only results for each model, {model name: (accuracy, predictions, gold labels, label names)}. The baseline for research question 4.
+    outputs_only_results = {}
+
     # Questions 1 and 2: train each model on every condition using all domains.
 
     for model_name, (evaluate_on_condition, _) in MODELS.items():
@@ -68,6 +84,9 @@ def main() -> None:
 
             rows.append((model_name, condition, "all", "all", accuracy))
             write_results(rows)
+
+            if condition == "outputs":
+                outputs_only_results[model_name] = (accuracy, predictions, gold, label_names)
 
     # Question 3: train each model once per domain on outputs only, then test it on every domain's test questions.
 
@@ -95,6 +114,36 @@ def main() -> None:
                 write_recall_results(recall_rows, label_names)
 
         create_domain_accuracy_grid(domain_accuracies, DOMAINS, f"{model_name.upper()} Cross Domain Accuracy")
+
+    # Question 4 part 1: describe how the LLMs' answers differ (no training)
+
+    describe_llm_differences()
+
+    # Question 4 part 2: retrain on outputs with one signal removed at a time, and compare with the research question 1 outputs only model.
+
+    ablation_rows = []
+
+    for model_name, build_model in ABLATION_MODELS.items():
+
+        baseline_accuracy, baseline_predictions, baseline_gold, label_names = outputs_only_results[model_name]
+
+        model_ablation_rows = [ablation_row(model_name, "none (baseline)", baseline_accuracy, baseline_accuracy, baseline_predictions, baseline_gold, label_names)]
+
+        for ablation_name in ABLATIONS:
+
+            accuracy, predictions, gold, label_names = evaluate_ablation(build_model, model_name, ablation_name, TRAINING_EPOCHS)
+
+            model_ablation_rows.append(ablation_row(model_name, ablation_name, accuracy, baseline_accuracy, predictions, gold, label_names))
+
+            rows.append((model_name, f"outputs: {ablation_name}", "all", "all", accuracy))
+            write_results(rows)
+
+            # Written after each ablation so a crash part way through doesn't lose earlier results
+            pd.DataFrame(ablation_rows + model_ablation_rows).to_csv(ABLATION_RESULTS_PATH, index=False)
+
+        ablation_rows += model_ablation_rows
+
+        create_ablation_plot(pd.DataFrame(model_ablation_rows), f"RQ4 {model_name.upper()} Ablation Accuracy")
 
     # Training curves for research questions 1 and 2, one figure per model
     for model_name in MODELS:

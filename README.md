@@ -93,8 +93,8 @@ Run every experiment from the repository root after preparing the data:
 python research_questions.py
 ```
 
-This trains the CNN and RNN for research questions 1, 2, and 3 and writes the
-results to `results/`. Training uses the same train/validation/test split for
+This trains the CNN and RNN for research questions 1, 2, and 3, runs the
+research question 4 analysis, and writes the results to `results/`. Training uses the same train/validation/test split for
 both models (`data_splitter.py`), split by question so all five models' answers
 to a question are always in the same split.
 
@@ -107,6 +107,13 @@ to a question are always in the same split.
 | `CNN/RNN ... Confusion Matrix.png` | RQ1/RQ2 confusion matrices for each model and condition |
 | `CNN/RNN Cross Domain Accuracy.png` | RQ3 grid: rows are the training domain, columns the testing domain |
 | `CNN/RNN Training Curves.png` | Training loss and validation accuracy per epoch for the RQ1/RQ2 runs |
+| `rq4_style_statistics.csv` | RQ4: average length, punctuation, formatting, and vocabulary measures for each LLM |
+| `rq4_characteristic_words.csv` | RQ4: words each LLM uses much more often than the others |
+| `rq4_ablation.csv`, `RQ4 CNN Ablation Accuracy.png` | RQ4: CNN accuracy and per-LLM recall after removing one signal (length, punctuation, content words, or function words) |
+| `RQ4 Answer Length.png` | RQ4: distribution of answer length for each LLM |
+
+`python rq4.py` writes only the RQ4 statistics, characteristic words, and answer
+length plot, without training anything.
 
 ### Code layout
 
@@ -118,4 +125,5 @@ to a question are always in the same split.
 | `training.py` | Training loop, evaluation, and training logs shared by both models |
 | `cnn.py`, `rnn.py` | The CNN and RNN (bidirectional LSTM) models |
 | `analysis.py` | Confusion matrices, RQ3 grid, recall, and training curve plots |
+| `rq4.py` | RQ4 style statistics, characteristic words, and signal removal experiments |
 | `research_questions.py` | Runs every experiment and writes `results/` |
