@@ -1,6 +1,15 @@
 # CMPSC-448-Midterm-Project
 
-Midterm project for CMPSC 448.
+Midterm project for CMPSC 448, "Who Wrote It?". We train a CNN and a
+bidirectional LSTM to identify which of five LLMs (ChatGPT, Claude, Copilot,
+Mistral AI, and Qwen) wrote an answer, using the TXD-22 dataset. We compare the
+models on answers only, questions only, and both (RQ1, RQ2), across subject
+domains (RQ3), and with individual signals such as length or punctuation
+removed (RQ4).
+
+**Team:** Jack Heinrich (team leader), Steven Chang
+
+**Report:** `Midterm Project 1 Report.pdf` at the root of this repository.
 
 ## Setup
 
@@ -35,14 +44,22 @@ python -c "import torch; print(torch.cuda.is_available())"
 ## Data
 
 This project uses the TXD-22 dataset (Iqbal & Abul Kashem, 2026), available on
-[Kaggle](https://www.kaggle.com/datasets/mdsadiqiqbal/txd-22-a-large-scale-benchmark-dataset)
+[Mendeley Data](https://doi.org/10.17632/prcjcggtjf.1) and
+[Kaggle](https://www.kaggle.com/datasets/mdsadiqiqbal/txd-22-a-large-scale-benchmark-dataset).
+
+**Attribution:** TXD-22 by Iqbal & Abul Kashem (2026),
+[https://doi.org/10.17632/prcjcggtjf.1](https://doi.org/10.17632/prcjcggtjf.1),
+licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). We
+filtered the dataset to five sources and removed some rows, as described under
+[Data fixes](#data-fixes).
 
 The raw file is too large for GitHub, so it is not included in the repository.
 
-1. Download the CSV from Kaggle.
-2. Save it as `data/TXD-22 A Large-Scale Benchmark Dataset.csv`
+1. Download the dataset CSV from Mendeley Data or Kaggle.
+2. Save it in the `data/` folder with exactly this name (rename it if needed):
+   `data/TXD-22 A Large-Scale Benchmark Dataset.csv`
 3. Run `python data_pipeline.py` to prepare data for our machine learning pipeline.
-4. The filtered and labeled data will be output to `data\TXD-22 Filtered and Labeled.csv`
+4. The filtered and labeled data will be output to `data/TXD-22 Filtered and Labeled.csv`
 
 ### Data fixes
 
@@ -87,43 +104,54 @@ from its position.
 
 ## Running the experiments
 
-Run every experiment from the repository root after preparing the data:
+Run every step from the repository root:
 
-```bash
-python research_questions.py
-```
+1. Install the dependencies (see [Setup](#setup)):
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Clean the raw dataset (needs the CSV in `data/`, see [Data](#data)):
+   ```bash
+   python data_pipeline.py
+   ```
+3. Train and evaluate both models for RQ1–RQ3, and run all of RQ4:
+   ```bash
+   python research_questions.py
+   ```
+4. Optionally, rerun only the RQ4 statistics, characteristic words, and answer
+   length plot, without training:
+   ```bash
+   python rq4.py
+   ```
 
-This trains the CNN and RNN for research questions 1, 2, and 3, runs the
+`research_questions.py` trains the CNN and RNN for research questions 1, 2, and 3, runs the
 research question 4 analysis, and writes the results to `results/`. Training uses the same train/validation/test split for
 both models (`data_splitter.py`), split by question so all five models' answers
 to a question are always in the same split.
 
-| File | Contents |
-| --- | --- |
-| `accuracies.csv` | Test accuracy for every run: RQ1/RQ2 (outputs only, inputs only, both) and RQ3 (every training domain → testing domain pair) |
-| `rq3_recall.csv` | RQ3: how often each LLM was identified correctly for every training domain → testing domain pair |
-| `training_history.csv` | Training loss, validation accuracy, and time for every epoch of every run |
-| `training_summary.csv` | Parameter count, best epoch, and total training time for every run |
-| `CNN/RNN ... Confusion Matrix.png` | RQ1/RQ2 confusion matrices for each model and condition |
-| `CNN/RNN Cross Domain Accuracy.png` | RQ3 grid: rows are the training domain, columns the testing domain |
-| `CNN/RNN Training Curves.png` | Training loss and validation accuracy per epoch for the RQ1/RQ2 runs |
-| `rq4_style_statistics.csv` | RQ4: average length, punctuation, formatting, and vocabulary measures for each LLM |
-| `rq4_characteristic_words.csv` | RQ4: words each LLM uses much more often than the others |
-| `rq4_ablation.csv`, `RQ4 CNN Ablation Accuracy.png` | RQ4: CNN accuracy and per-LLM recall after removing one signal (length, punctuation, content words, or function words) |
-| `RQ4 Answer Length.png` | RQ4: distribution of answer length for each LLM |
-
-`python rq4.py` writes only the RQ4 statistics, characteristic words, and answer
-length plot, without training anything.
+| File                                                | Contents                                                                                                                     |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `accuracies.csv`                                    | Test accuracy for every run: RQ1/RQ2 (outputs only, inputs only, both) and RQ3 (every training domain → testing domain pair) |
+| `rq3_recall.csv`                                    | RQ3: how often each LLM was identified correctly for every training domain → testing domain pair                             |
+| `training_history.csv`                              | Training loss, validation accuracy, and time for every epoch of every run                                                    |
+| `training_summary.csv`                              | Parameter count, best epoch, and total training time for every run                                                           |
+| `CNN/RNN ... Confusion Matrix.png`                  | RQ1/RQ2 confusion matrices for each model and condition                                                                      |
+| `CNN/RNN Cross Domain Accuracy.png`                 | RQ3 grid: rows are the training domain, columns the testing domain                                                           |
+| `CNN/RNN Training Curves.png`                       | Training loss and validation accuracy per epoch for the RQ1/RQ2 runs                                                         |
+| `rq4_style_statistics.csv`                          | RQ4: average length, punctuation, formatting, and vocabulary measures for each LLM                                           |
+| `rq4_characteristic_words.csv`                      | RQ4: words each LLM uses much more often than the others                                                                     |
+| `rq4_ablation.csv`, `RQ4 CNN Ablation Accuracy.png` | RQ4: CNN accuracy and per-LLM recall after removing one signal (length, punctuation, content words, or function words)       |
+| `RQ4 Answer Length.png`                             | RQ4: distribution of answer length for each LLM                                                                              |
 
 ### Code layout
 
-| File | Purpose |
-| --- | --- |
-| `data_pipeline.py` | Cleans the raw dataset and adds subject and domain labels |
-| `data_splitter.py` | Train/validation/test split shared by both models |
-| `text_pipeline.py` | Tokenizing, vocabulary, and PyTorch data loaders |
-| `training.py` | Training loop, evaluation, and training logs shared by both models |
-| `cnn.py`, `rnn.py` | The CNN and RNN (bidirectional LSTM) models |
-| `analysis.py` | Confusion matrices, RQ3 grid, recall, and training curve plots |
-| `rq4.py` | RQ4 style statistics, characteristic words, and signal removal experiments |
-| `research_questions.py` | Runs every experiment and writes `results/` |
+| File                    | Purpose                                                                    |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `data_pipeline.py`      | Cleans the raw dataset and adds subject and domain labels                  |
+| `data_splitter.py`      | Train/validation/test split shared by both models                          |
+| `text_pipeline.py`      | Tokenizing, vocabulary, and PyTorch data loaders                           |
+| `training.py`           | Training loop, evaluation, and training logs shared by both models         |
+| `cnn.py`, `rnn.py`      | The CNN and RNN (bidirectional LSTM) models                                |
+| `analysis.py`           | Confusion matrices, RQ3 grid, recall, and training curve plots             |
+| `rq4.py`                | RQ4 style statistics, characteristic words, and signal removal experiments |
+| `research_questions.py` | Runs every experiment and writes `results/`                                |

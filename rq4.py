@@ -16,7 +16,7 @@ from training import evaluate, train_model
 # Part 1 describes how the LLMs' answers differ (no training).
 # Part 2 retrains a model with one signal removed at a time and measures how much accuracy drops.
 
-DATA_PATH = "data\\TXD-22 Filtered and Labeled.csv"
+DATA_PATH = "data/TXD-22 Filtered and Labeled.csv"
 
 STYLE_STATISTICS_PATH = "results/rq4_style_statistics.csv"
 
